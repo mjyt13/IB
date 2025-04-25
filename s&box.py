@@ -54,19 +54,13 @@ for key in keys:
            print("особые символы")
 """
 # открыть файл дать строк
-
+"""
 def clean_text(text):
-    """
-    Приведение текста к нижнему регистру и удаление всего, кроме русских букв.
-    """
     text = text.lower()
     text = re.sub('[^а-я]', '', text)
     return text
 
 def determine_caesar_key(text):
-    """
-    Определяет ключ шифрования по методу Цезаря.
-    """
     cleaned = clean_text(text)
     if not cleaned:
         return 0
@@ -122,4 +116,10 @@ with open(ceaser_filename,"r",encoding='utf-8') as ceaser_file:
     ponos = ceaser_file.read()
     key = determine_caesar_key(ponos)+1
     sran = ceaser_decode(ponos,key)
-    print(key, sran[:90])
+    print(key, sran[:90])"""
+key = 0x000000FF_00000100
+
+L,R = key >> 32 & 0xFFFFFFFF, key & 0xFFFFFFFF
+print(L,R)
+L_new, R_new = L ^ 0x0000000F, R ^ 0x00000000
+print(L_new, R_new)
