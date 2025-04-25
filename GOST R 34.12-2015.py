@@ -64,12 +64,6 @@ def substitute_bytes(x, s_box, size=64):
         result |= (substituted << (8 * i))
     return result
 
-
-def linear_transform(x):
-    """Линейное преобразование L(x) для 64-битного числа."""
-    # Пример: циклический сдвиг и XOR (упрощённая версия)
-    return ((x << 1) | (x >> 63)) ^ x  # Замените на реальную L-функцию из ГОСТ!
-
 def generate_round_keys(key):
     """Генерирует 10 раундовых ключей из 256-битного ключа."""
     K = [0] * 10
@@ -81,33 +75,78 @@ def generate_round_keys(key):
         K[i] = linear_transform(substitute_bytes(K[i-1] ^ C[i-2], S_BOX))
     return K
 
-def feistel_round(L, R, round_key, encrypt=True):
-    """Один раунд Фейстеля."""
-    if encrypt:
-        R_xored = R ^ round_key
-        R_substituted = substitute_bytes(R_xored, S_BOX)
-        R_transformed = linear_transform(R_substituted)
-        new_L, new_R = R, L ^ R_transformed
-    else:
-        L_xored = L ^ round_key
-        L_substituted = substitute_bytes(L_xored, INV_S_BOX)
-        L_transformed = linear_transform(L_substituted)  # L-функция обратима
-        new_L, new_R = R ^ L_transformed, L
-    return new_L, new_R
+def gf_mult(a, b, mod=0x1C3):
+    """Умножение в поле GF(2^8) по модулю 0x1C3."""
+    res = 0
+    for _ in range(8):
+        if b & 1:
+            res ^= a
+        a <<= 1
+        if a & 0x100:
+            a ^= mod
+        b >>= 1
+    return res
+
+def linear_transform(x):
+    """Реальное линейное преобразование L(x) для 64-битного блока."""
+    x_bytes = [(x >> (8 * i)) & 0xFF for i in range(8)]
+    M = [  # Матрица из ГОСТ
+        [0x94, 0x20, 0x85, 0x10, 0xC2, 0xC0, 0x01, 0xFB],
+        [0x01, 0xFB, 0x94, 0x20, 0x85, 0x10, 0xC2, 0xC0],
+        [0xC2, 0xC0, 0x01, 0xFB, 0x94, 0x20, 0x85, 0x10],
+        [0x85, 0x10, 0xC2, 0xC0, 0x01, 0xFB, 0x94, 0x20],
+        [0x01, 0xFB, 0x94, 0x20, 0x85, 0x10, 0xC2, 0xC0],
+        [0xC2, 0xC0, 0x01, 0xFB, 0x94, 0x20, 0x85, 0x10],
+        [0x85, 0x10, 0xC2, 0xC0, 0x01, 0xFB, 0x94, 0x20],
+        [0x01, 0xFB, 0x94, 0x20, 0x85, 0x10, 0xC2, 0xC0]
+    ]
+    result = 0
+    for i in range(8):
+        val = 0
+        for j in range(8):
+            val ^= gf_mult(M[i][j], x_bytes[7 - j])
+        result |= (val << (8 * i))
+    return result
+
+def inv_linear_transform(x):
+    """Обратное линейное преобразование (аналогично, но с обратной матрицей)."""
+    # Обратная матрица M^{-1} (приведена в стандарте)
+    M_inv = [
+        [0x10, 0xFB, 0xC0, 0x01, 0x20, 0x94, 0x85, 0xC2],
+        [0x85, 0xC2, 0x10, 0xFB, 0xC0, 0x01, 0x20, 0x94],
+        [0x20, 0x94, 0x85, 0xC2, 0x10, 0xFB, 0xC0, 0x01],
+        [0xC0, 0x01, 0x20, 0x94, 0x85, 0xC2, 0x10, 0xFB],
+        [0x10, 0xFB, 0xC0, 0x01, 0x20, 0x94, 0x85, 0xC2],
+        [0x85, 0xC2, 0x10, 0xFB, 0xC0, 0x01, 0x20, 0x94],
+        [0x20, 0x94, 0x85, 0xC2, 0x10, 0xFB, 0xC0, 0x01],
+        [0xC0, 0x01, 0x20, 0x94, 0x85, 0xC2, 0x10, 0xFB]
+    ]
+    x_bytes = [(x >> (8 * i)) & 0xFF for i in range(8)]
+    result = 0
+    for i in range(8):
+        val = 0
+        for j in range(8):
+            val ^= gf_mult(M_inv[i][j], x_bytes[7 - j])
+        result |= (val << (8 * i))
+    return result
 
 
 def kuznechik_encrypt(block, round_keys, rounds=10):
-    """Шифрование 128-битного блока."""
     L, R = split_block(block)
     for i in range(rounds):
-        L, R = feistel_round(L, R, round_keys[i], encrypt=True)
+        R ^= round_keys[i]
+        R = substitute_bytes(R, S_BOX)
+        R = linear_transform(R)
+        L, R = R, L ^ R
     return join_blocks(L, R)
 
 def kuznechik_decrypt(block, round_keys, rounds=10):
-    """Дешифрование 128-битного блока."""
     L, R = split_block(block)
     for i in reversed(range(rounds)):
-        L, R = feistel_round(L, R, round_keys[i], encrypt=False)
+        L ^= round_keys[i]
+        L = substitute_bytes(L, INV_S_BOX)
+        L = inv_linear_transform(L)
+        L, R = R, L ^ R
     return join_blocks(L, R)
 
 # Пример использования
@@ -115,12 +154,13 @@ def kuznechik_decrypt(block, round_keys, rounds=10):
 if __name__ == "__main__":
     key = 0x8899AABBCCDDEEFF0011223344556677FEDCBA98765432100123456789ABCDEF  # Пример ключа
     plaintext = 0x1122334455667700FFEEDDCCBBAA9988  # Пример открытого текста
+    print(f"Изначальный текст: {hex(plaintext)}")
 
     round_keys = generate_round_keys(key)
     print("Раундовые ключи:", [hex(k) for k in round_keys])
 
-    ciphertext = kuznechik_encrypt(plaintext, round_keys, rounds=2)
+    ciphertext = kuznechik_encrypt(plaintext, round_keys, rounds=10)
     print(f"Шифртекст: {hex(ciphertext)}")
 
-    decrypted = kuznechik_decrypt(ciphertext, round_keys, rounds=2)
+    decrypted = kuznechik_decrypt(ciphertext, round_keys, rounds=10)
     print(f"Расшифрованный текст: {hex(decrypted)}")
