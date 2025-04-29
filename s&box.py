@@ -117,9 +117,21 @@ with open(ceaser_filename,"r",encoding='utf-8') as ceaser_file:
     key = determine_caesar_key(ponos)+1
     sran = ceaser_decode(ponos,key)
     print(key, sran[:90])"""
-key = 0x000000FF_00000100
+def split_block(block, bits=128):
+    """Разбивает блок размером 128 бит на две части."""
+    half = bits // 2
+    return (block >> half) & ((1 << half) - 1), block & ((1 << half) - 1)
 
+# key 64 bits
+key = 0xA00000FF_90000100
+# key_size in bits
+key_size = key.bit_length()
+print(key_size)
+half = key_size // 2
+print(half)
 L,R = key >> 32 & 0xFFFFFFFF, key & 0xFFFFFFFF
-print(L,R)
+print(hex(L),hex(R))
 L_new, R_new = L ^ 0x0000000F, R ^ 0x00000000
-print(L_new, R_new)
+print(hex(L_new), hex(R_new))
+L_new, R_new = key >> half & ((1 << half)-1), key & ((1 << half)-1)
+print(hex(L_new), hex(R_new))
