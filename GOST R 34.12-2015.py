@@ -1,6 +1,6 @@
 import numpy as np
 
-# Предопределенные константы (упрощенные S-блоки и матрица L)
+# Предопределенные константы (S-блоки и матрица L)
 S_BOX = [
     0xFC, 0xEE, 0xDD, 0x11, 0xCF, 0x6E, 0x31, 0x16, 0xFB, 0xC4, 0xFA, 0xDA, 0x23, 0xC5, 0x04, 0x4D,
     0xE9, 0x77, 0xF0, 0xDB, 0x93, 0x2E, 0x99, 0xBA, 0x17, 0x36, 0xF1, 0xBB, 0x14, 0xCD, 0x5F, 0xC1,
@@ -10,14 +10,14 @@ S_BOX = [
     0xB5, 0x70, 0x0E, 0x56, 0x08, 0x0C, 0x76, 0x12, 0xBF, 0x72, 0x13, 0x47, 0x9C, 0xB7, 0x5D, 0x87,
     0x15, 0xA1, 0x96, 0x29, 0x10, 0x7B, 0x9A, 0xC7, 0xF3, 0x91, 0x78, 0x6F, 0x9D, 0x9E, 0xB2, 0xB1,
     0x32, 0x75, 0x19, 0x3D, 0xFF, 0x35, 0x8A, 0x7E, 0x6D, 0x54, 0xC6, 0x80, 0xC3, 0xBD, 0x0D, 0x57,
-    0xDF, 0xF5, 0x24, 0xA9, 0x3E, 0xA8, 0x43, 0xC9, 0xD7, 0x79, 0xD6, 0xF6, 0x22, 0x67, 0x63, 0x2F,
-    0x38, 0xB4, 0x73, 0xE4, 0xF7, 0xCA, 0xD8, 0xD1, 0x7C, 0x82, 0xB9, 0x5B, 0xCB, 0xBE, 0x39, 0x4A,
-    0x4C, 0x58, 0xCF, 0xD0, 0xEF, 0xAA, 0xFB, 0x43, 0x4D, 0x33, 0x85, 0x45, 0xF9, 0x02, 0x7F, 0x50,
-    0x3C, 0x9F, 0xA8, 0x51, 0xA3, 0x40, 0x8F, 0x92, 0x9D, 0x38, 0xF5, 0xBC, 0xB6, 0xDA, 0x21, 0x10,
-    0xFF, 0xF3, 0xD2, 0xCD, 0x0C, 0x13, 0xEC, 0x5F, 0x97, 0x44, 0x17, 0xC4, 0xA7, 0x7E, 0x3D, 0x64,
-    0x5D, 0x19, 0x73, 0x60, 0x81, 0x4F, 0xDC, 0x22, 0x2A, 0x90, 0x88, 0x46, 0xEE, 0xB8, 0x14, 0xDE,
-    0x5E, 0x0B, 0xDB, 0xE0, 0x32, 0x3A, 0x0A, 0x49, 0x06, 0x24, 0x5C, 0xC2, 0xD3, 0xAC, 0x62, 0x91,
-    0x95, 0xE4, 0x79, 0xE7, 0xC8, 0x37, 0x6D, 0x8D, 0xD5, 0x4E, 0xA9, 0x6C, 0x56, 0xF4, 0xEA, 0x65
+    0xDF, 0xF5, 0x24, 0xA9, 0x3E, 0xA8, 0x43, 0xC9, 0xD7, 0x79, 0xD6, 0xF6, 0x7C, 0x22, 0xB9, 0x03,
+    0xE0, 0x0F, 0xEC, 0xDE, 0x7A, 0x94, 0xB0, 0xBC, 0xDC, 0xE8, 0x28, 0x50, 0x4E, 0x33, 0x0A, 0x4A,
+    0xA7, 0x97, 0x60, 0x73, 0x1E, 0x00, 0x62, 0x44, 0x1A, 0xB8, 0x38, 0x82, 0x64, 0x9D, 0x26, 0x41,
+    0xAD, 0x45, 0x46, 0x92, 0x27, 0x5E, 0x55, 0x2F, 0x8C, 0xA3, 0xA5, 0x7D, 0x69, 0xD5, 0x95, 0x3B,
+    0x07, 0x58, 0xB3, 0x40, 0x86, 0xAC, 0x1D, 0xF7, 0x30, 0x37, 0x6B, 0xE4, 0x88, 0xD9, 0xE7, 0x89,
+    0xE1, 0x1B, 0x83, 0x49, 0x4C, 0x3F, 0xF8, 0xFE, 0x8D, 0x53, 0xAA, 0x90, 0xCA, 0xD8, 0x85, 0x61,
+    0x20, 0x71, 0x67, 0xA4, 0x2D, 0x2B, 0x09, 0x5B, 0xCB, 0x9B, 0x25, 0xD0, 0xBE, 0xE5, 0x6C, 0x52,
+    0x59, 0xA6, 0x74, 0xD2, 0xE6, 0xF4, 0xB4, 0xC0, 0xD1, 0x66, 0xAF, 0xC2, 0x39, 0x4B, 0x63, 0xB6
 ]
 
 INV_S_BOX = [0] * 256
@@ -33,30 +33,33 @@ C = [
     0xa74af7efab73df160dd208608b9efe06,
     0xc9e8819dc73ba5ae50f5b570561a6a07,
     0xf6593616e6055689adfba18027aa2a08,
-    # ... (остальные константы из ГОСТ)
 ]
 
-# Матрица для линейного преобразования (упрощенная версия)
-L_MATRIX = np.array([
-    [1, 0, 1, 1],
-    [1, 1, 0, 1],
-    [1, 1, 1, 0],
-    [0, 1, 1, 1]
-], dtype=np.uint8)
+# степени двойки для поля Галуа
+gf = [1]
+
+for i in range(1,256):
+    galua_val = gf[i - 1] << 1
+    if galua_val >= 256:
+        galua_val ^= 0xC3 # = 195 = 451 (0x1C3)
+    gf.append(galua_val % 256)
+
+# Константы для линейного преобразования
+L_const = [1, 148, 32, 133, 16, 194, 192, 1, 251, 1, 192, 194, 16, 133, 32, 148]
 
 def split_block(block, bits=128):
-    """Разбивает блок на две части."""
+    """Разбивает блок размером 128 бит на две части. Произвольное количество бит у блока указывается явно."""
     half = bits // 2
     return (block >> half) & ((1 << half) - 1), block & ((1 << half) - 1)
 
 def join_blocks(L, R, bits=128):
-    """Соединяет две части в один блок."""
+    """Соединяет две части в один блок размером 128 бит. Произвольное количество бит всего блока указывается явно."""
     half = bits // 2
     return (L << half) | R
 
 
-def substitute_bytes(x, s_box, size=64):
-    """Применяет S-блок к каждому байту."""
+def substitute_bytes(x, s_box, size=128):
+    """Применяет S-блок к каждому байту 128-битного числа."""
     result = 0
     for i in range(size // 8):
         byte = (x >> (8 * i)) & 0xFF
@@ -67,94 +70,96 @@ def substitute_bytes(x, s_box, size=64):
 def generate_round_keys(key):
     """Генерирует 10 раундовых ключей из 256-битного ключа."""
     K = [0] * 10
-    K0 = split_block(key >> 128, 128)
-    K1 = split_block(key & (1 << 128) - 1, 128)
-    K[0], K[1] = join_blocks(K0[0],K0[1]), join_blocks(K1[0],K1[1])
+    K[0], K[1] = key >> 128, key & ((1 << 128) - 1)
     for i in range(2, 10):
         # Реальная генерация ключей с использованием C[i-2], S-блоков и L-функции
         K[i] = linear_transform(substitute_bytes(K[i-1] ^ C[i-2], S_BOX))
     return K
 
-def gf_mult(a, b, mod=0x1C3):
-    """Умножение в поле GF(2^8) по модулю 0x1C3."""
-    res = 0
-    for _ in range(8):
-        if b & 1:
-            res ^= a
-        a <<= 1
-        if a & 0x100:
-            a ^= mod
-        b >>= 1
-    return res
 
-def linear_transform(x):
-    """Реальное линейное преобразование L(x) для 64-битного блока."""
-    x_bytes = [(x >> (8 * i)) & 0xFF for i in range(8)]
-    M = [  # Матрица из ГОСТ
-        [0x94, 0x20, 0x85, 0x10, 0xC2, 0xC0, 0x01, 0xFB],
-        [0x01, 0xFB, 0x94, 0x20, 0x85, 0x10, 0xC2, 0xC0],
-        [0xC2, 0xC0, 0x01, 0xFB, 0x94, 0x20, 0x85, 0x10],
-        [0x85, 0x10, 0xC2, 0xC0, 0x01, 0xFB, 0x94, 0x20],
-        [0x01, 0xFB, 0x94, 0x20, 0x85, 0x10, 0xC2, 0xC0],
-        [0xC2, 0xC0, 0x01, 0xFB, 0x94, 0x20, 0x85, 0x10],
-        [0x85, 0x10, 0xC2, 0xC0, 0x01, 0xFB, 0x94, 0x20],
-        [0x01, 0xFB, 0x94, 0x20, 0x85, 0x10, 0xC2, 0xC0]
-    ]
+def gf_mult(a, b):
+    """Умножение в поле GF(2^8)
+    Берутся 2 числа, находятся соответствующие им степени двойки, показатели складываются,
+    после чего находится остаток от деления на 255(вернуться в поле), и находится число по показателю степени
+    пример: 319 = 63 (mod 256) * 77. 63=2**204, 77=2**109; 204+109=313 = 58 (mod 255); 2**58 = 227"""
+    if a==0 or b==0: return 0
+    log_a = gf.index(a%256)
+    log_b = gf.index(b%256)
+    log_c = (log_a + log_b)%255
+    return gf[log_c]
+
+def gf_div(a,b):
+    """Деление в поле GF(2^8)
+    Берутся 2 числа, находятся соответствующие им степени двойки, показатель второго вычитается из оного первого,
+    после чего находится остаток от деления на 255(вернуться в поле), и находится число по показателю степени"""
+    if a==0 or b==0: return 0
+    log_a = gf.index(a % 256)
+    log_b = gf.index(b % 256)
+    log_c = (log_a - log_b) % 255
+    return gf[log_c]
+
+
+def linear_transform(x,size=128):
+    """линейное преобразование L(x) для 128-битного блока. Разбивается блок 128 бит на 16 байт,
+    и к каждому из них применяется умножение строго определенных констант ГОСТ"""
+    x_bytes = [(x >> (8 * i)) & 0xFF for i in range(size//8)]
     result = 0
-    for i in range(8):
-        val = 0
-        for j in range(8):
-            val ^= gf_mult(M[i][j], x_bytes[7 - j])
-        result |= (val << (8 * i))
+    l = 0
+    for i in range(size // 8):
+        val = gf_mult(x_bytes[i],L_const[i])
+        l ^= val
+    result |= l
+    for i in range(size//8 - 1,0,-1):
+        result <<= 8
+        result |= x_bytes[i]
     return result
 
-def inv_linear_transform(x):
-    """Обратное линейное преобразование (аналогично, но с обратной матрицей)."""
-    # Обратная матрица M^{-1} (приведена в стандарте)
-    M_inv = [
-        [0x10, 0xFB, 0xC0, 0x01, 0x20, 0x94, 0x85, 0xC2],
-        [0x85, 0xC2, 0x10, 0xFB, 0xC0, 0x01, 0x20, 0x94],
-        [0x20, 0x94, 0x85, 0xC2, 0x10, 0xFB, 0xC0, 0x01],
-        [0xC0, 0x01, 0x20, 0x94, 0x85, 0xC2, 0x10, 0xFB],
-        [0x10, 0xFB, 0xC0, 0x01, 0x20, 0x94, 0x85, 0xC2],
-        [0x85, 0xC2, 0x10, 0xFB, 0xC0, 0x01, 0x20, 0x94],
-        [0x20, 0x94, 0x85, 0xC2, 0x10, 0xFB, 0xC0, 0x01],
-        [0xC0, 0x01, 0x20, 0x94, 0x85, 0xC2, 0x10, 0xFB]
-    ]
-    x_bytes = [(x >> (8 * i)) & 0xFF for i in range(8)]
+def inv_linear_transform(x,size=128):
+    """ Обратное линейное преобразование L(x) для 128-битного блока. Разбивается блок 128 бит на 16 байт,
+    и к каждому из них применяется умножение строго определенных констант ГОСТ.
+    После этого находится сумма в поле с первым байтом(он результат прямого преобразования),
+    что становится недостающим первым(нулевым) байтом."""
+    x_bytes = [(x >> (8 * i)) & 0xFF for i in range(size//8)]
     result = 0
-    for i in range(8):
-        val = 0
-        for j in range(8):
-            val ^= gf_mult(M_inv[i][j], x_bytes[7 - j])
-        result |= (val << (8 * i))
+    l = x_bytes[-1]
+    for i in range((size // 8) - 1):
+        val = gf_mult(x_bytes[i],L_const[i+1])
+        l ^= val
+    for i in range(size//8 - 2,0,-1):
+        result |= x_bytes[i]
+        result <<= 8
+    result |= l
     return result
 
 
 def kuznechik_encrypt(block, round_keys, rounds=10):
-    L, R = split_block(block)
+    R = block
     for i in range(rounds):
         R ^= round_keys[i]
-        R = substitute_bytes(R, S_BOX)
-        R = linear_transform(R)
-        L, R = R, L ^ R
-    return join_blocks(L, R)
+        R = substitute_bytes(R, S_BOX, 128)
+        R = linear_transform(R, 128)
+    return R
 
 def kuznechik_decrypt(block, round_keys, rounds=10):
-    L, R = split_block(block)
+    L = block
     for i in reversed(range(rounds)):
+        L = inv_linear_transform(L, 128)
+        L = substitute_bytes(L, INV_S_BOX, 128)
         L ^= round_keys[i]
-        L = substitute_bytes(L, INV_S_BOX)
-        L = inv_linear_transform(L)
-        L, R = R, L ^ R
-    return join_blocks(L, R)
+    return L
 
 # Пример использования
 # Пример использования
 if __name__ == "__main__":
     key = 0x8899AABBCCDDEEFF0011223344556677FEDCBA98765432100123456789ABCDEF  # Пример ключа
+    # key = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
     plaintext = 0x1122334455667700FFEEDDCCBBAA9988  # Пример открытого текста
     print(f"Изначальный текст: {hex(plaintext)}")
+
+    test1 = 1
+    lin1 = linear_transform(test1)
+    inv1 = inv_linear_transform(lin1)
+    print(f"linear {lin1}, inv_linear {inv1}")
 
     round_keys = generate_round_keys(key)
     print("Раундовые ключи:", [hex(k) for k in round_keys])
@@ -164,3 +169,5 @@ if __name__ == "__main__":
 
     decrypted = kuznechik_decrypt(ciphertext, round_keys, rounds=10)
     print(f"Расшифрованный текст: {hex(decrypted)}")
+
+    print(f"zaeboka") if decrypted == plaintext else print(f"biobroli poportil")
