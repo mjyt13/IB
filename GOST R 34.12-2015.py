@@ -125,7 +125,7 @@ def inv_linear_transform(x,size=128):
     for i in range((size // 8) - 1):
         val = gf_mult(x_bytes[i],L_const[i+1])
         l ^= val
-    for i in range(size//8 - 2,0,-1):
+    for i in range(size//8 - 2,-1,-1):
         result |= x_bytes[i]
         result <<= 8
     result |= l
@@ -156,10 +156,10 @@ if __name__ == "__main__":
     plaintext = 0x1122334455667700FFEEDDCCBBAA9988  # Пример открытого текста
     print(f"Изначальный текст: {hex(plaintext)}")
 
-    test1 = 1
+    test1 = 0x0100
     lin1 = linear_transform(test1)
     inv1 = inv_linear_transform(lin1)
-    print(f"linear {lin1}, inv_linear {inv1}")
+    print(f"linear {hex(lin1)}, inv_linear {hex(inv1)}")
 
     round_keys = generate_round_keys(key)
     print("Раундовые ключи:", [hex(k) for k in round_keys])
