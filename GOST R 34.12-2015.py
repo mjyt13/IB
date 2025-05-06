@@ -60,6 +60,7 @@ def join_blocks(L, R, bits=128):
 
 def substitute_bytes(x, s_box, size=128):
     """Применяет S-блок к каждому байту 128-битного числа."""
+    return x
     result = 0
     for i in range(size // 8):
         byte = (x >> (8 * i)) & 0xFF
@@ -67,11 +68,11 @@ def substitute_bytes(x, s_box, size=128):
         result |= (substituted << (8 * i))
     return result
 
-def generate_round_keys(key):
+def generate_round_keys(key,rounds=10):
     """Генерирует 10 раундовых ключей из 256-битного ключа."""
-    K = [0] * 10
+    K = [0] * rounds
     K[0], K[1] = key >> 128, key & ((1 << 128) - 1)
-    for i in range(2, 10):
+    for i in range(2, rounds):
         # Реальная генерация ключей с использованием C[i-2], S-блоков и L-функции
         K[i] = linear_transform(substitute_bytes(K[i-1] ^ C[i-2], S_BOX))
     return K
@@ -148,26 +149,92 @@ def kuznechik_decrypt(block, round_keys, rounds=10):
         L ^= round_keys[i]
     return L
 
-# Пример использования
+def text_to_blocks(text: str) -> list[int]:
+    """Разбивает текст на блоки по 16 байт (128 бит) и преобразует в числа."""
+    byte_data = text.encode('utf-8')
+    blocks = []
+    for i in range(0, len(byte_data), 16):
+        chunk = byte_data[i:i+16]
+        # Дополняем последний блок нулями, если нужно
+        if len(chunk) < 16:
+            chunk += bytes([0] * (16 - len(chunk)))
+        blocks.append(int.from_bytes(chunk, byteorder='big'))
+    return blocks
+
+def blocks_to_text(blocks: list[int]) -> str:
+    """Собирает текст из блоков, удаляя дополняющие нули."""
+    byte_data = bytearray()
+    for block in blocks:
+        byte_data.extend(block.to_bytes(16, byteorder='big'))
+    # Удаляем нули в конце
+    padding_len = 0
+    for i in range(len(byte_data) - 1, -1, -1):
+        if byte_data[i] != 0:
+            padding_len = i + 1
+            break
+    return byte_data[:padding_len].decode('utf-8')
+
+def encrypt_text(text: str, key: int) -> list[int]:
+    blocks = text_to_blocks(text)
+    round_keys = generate_round_keys(key,rounds=10)
+    return [kuznechik_encrypt(b, round_keys,rounds=10) for b in blocks]
+
+def decrypt_text(encrypted_blocks: list[int], key: int) -> str:
+    global texts
+    round_keys = generate_round_keys(key,rounds=10)
+    decrypted = [kuznechik_decrypt(b, round_keys,rounds=10) for b in encrypted_blocks]
+    # print(f"we gotta {decrypted}")
+    distin = 0
+    for i in range(len(decrypted)):
+        if decrypted[i] != texts[i]:
+            print(hex(decrypted[i]), end="\t")
+            distin +=1
+    print("\n",distin)
+    return blocks_to_text(decrypted)
+
+
 # Пример использования
 if __name__ == "__main__":
     key = 0x8899AABBCCDDEEFF0011223344556677FEDCBA98765432100123456789ABCDEF  # Пример ключа
     # key = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-    plaintext = 0x1122334455667700FFEEDDCCBBAA9988  # Пример открытого текста
-    print(f"Изначальный текст: {hex(plaintext)}")
+    # key = 0x1000
+    plaintext = ("(ドラゴンボール おれはたいよう\n"
+                 "Doragonbooru (Ore wa taiyou)\n"
+"ドラゴンボール (おまえはつき)\n"
+"Doragonbooru (Omae wa tsuki)\n"
 
-    test1 = 0x0100
-    lin1 = linear_transform(test1)
-    inv1 = inv_linear_transform(lin1)
-    print(f"linear {hex(lin1)}, inv_linear {hex(inv1)}")
+"とけあえばきせきのぱわー\n"
+"Tokeaeba kiseki no pawaa\n"
 
-    round_keys = generate_round_keys(key)
-    print("Раундовые ключи:", [hex(k) for k in round_keys])
+"ドラゴンボール (ゆびをあわせ)\n"
+"Doragonbooru (Yubi wo awase)\n"
 
-    ciphertext = kuznechik_encrypt(plaintext, round_keys, rounds=10)
-    print(f"Шифртекст: {hex(ciphertext)}")
+"ドラゴンボール (こころかさね)\n"
+"Doragonbooru (Kokoro kasane)\n"
 
-    decrypted = kuznechik_decrypt(ciphertext, round_keys, rounds=10)
-    print(f"Расшифрованный текст: {hex(decrypted)}")
+"たたかいのれきしをかえろ...さいきょうのふゆうじょん\n"
+"Tatakai no rekishi wo kaero... Saikyou no fyuujon\n"
+                 )  # Пример открытого текста
+    # print(f"Изначальный текст: {plaintext}")
+    keys = generate_round_keys(key)
 
-    print(f"zaeboka") if decrypted == plaintext else print(f"biobroli poportil")
+    num_text =173887671632706779947018813715747275054
+    enc = kuznechik_encrypt(num_text,keys)
+    decr = kuznechik_decrypt(enc,keys)
+    print("zaeboka") if decr == num_text else print("biobroli poportil")
+
+    texts = text_to_blocks(plaintext)
+    smth = blocks_to_text(texts)
+    # print(f"in bytes len:{len(texts)} {texts}")
+
+    while True:
+        try:
+            cipher_text = encrypt_text(plaintext,key)
+            # print(cipher_text)
+            decrypted_text = decrypt_text(cipher_text,key)
+            print(f"key {hex(key)} is right")
+            print(decrypted_text)
+            break
+        except:
+            print(f"key {hex(key)} is wrong")
+            key+=1

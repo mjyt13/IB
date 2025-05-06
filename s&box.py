@@ -1,12 +1,6 @@
 import json, os, itertools,time, string, re
 from collections import Counter
 
-from mpmath import mnorm
-
-from Cryptographic_change import ceaser_encode,ceaser_decode
-
-from Frequency_analysis import determine_caesar_key
-
 alphabet = ['а','б','в','г','д','е','ё','ж','з','и','й',
            'к','л','м','н','о','п','р','с','т','у','ф',
            'х','ц','ч','ш','щ','ъ','ы','ь','э','ю','я',' ']
@@ -240,8 +234,7 @@ def gf_div(a,b):
     log_b = gf.index(b % 256)
     log_c = (log_a - log_b) % 255
     return gf[log_c]
-
-
+are_you_ready = 0xd181d027d0b8d0b920d0b1d18364fd46, 0x8f20d0b820d143d0b0d0ba20d0b4d0b0,	0xd0bbd0b5d0b52e20d0f3bc61dfc4f746
 xori = [0xff,0xab,0x77]
 s = xori[0] ^ xori[1]
 print(hex(s))
