@@ -12,7 +12,7 @@ S_BOX = [
     0x32, 0x75, 0x19, 0x3D, 0xFF, 0x35, 0x8A, 0x7E, 0x6D, 0x54, 0xC6, 0x80, 0xC3, 0xBD, 0x0D, 0x57,
     0xDF, 0xF5, 0x24, 0xA9, 0x3E, 0xA8, 0x43, 0xC9, 0xD7, 0x79, 0xD6, 0xF6, 0x7C, 0x22, 0xB9, 0x03,
     0xE0, 0x0F, 0xEC, 0xDE, 0x7A, 0x94, 0xB0, 0xBC, 0xDC, 0xE8, 0x28, 0x50, 0x4E, 0x33, 0x0A, 0x4A,
-    0xA7, 0x97, 0x60, 0x73, 0x1E, 0x00, 0x62, 0x44, 0x1A, 0xB8, 0x38, 0x82, 0x64, 0x9D, 0x26, 0x41,
+    0xA7, 0x97, 0x60, 0x73, 0x1E, 0x00, 0x62, 0x44, 0x1A, 0xB8, 0x38, 0x82, 0x64, 0x9F, 0x26, 0x41,
     0xAD, 0x45, 0x46, 0x92, 0x27, 0x5E, 0x55, 0x2F, 0x8C, 0xA3, 0xA5, 0x7D, 0x69, 0xD5, 0x95, 0x3B,
     0x07, 0x58, 0xB3, 0x40, 0x86, 0xAC, 0x1D, 0xF7, 0x30, 0x37, 0x6B, 0xE4, 0x88, 0xD9, 0xE7, 0x89,
     0xE1, 0x1B, 0x83, 0x49, 0x4C, 0x3F, 0xF8, 0xFE, 0x8D, 0x53, 0xAA, 0x90, 0xCA, 0xD8, 0x85, 0x61,
@@ -58,14 +58,16 @@ def join_blocks(L, R, bits=128):
     return (L << half) | R
 
 
-def substitute_bytes(x, s_box, size=128):
+def substitute_bytes(x, s_box=None, size=128):
     """Применяет S-блок к каждому байту 128-битного числа."""
-    return x
+
+    if s_box is None:
+        s_box = S_BOX
     result = 0
-    for i in range(size // 8):
+    for i in reversed(range(size // 8)):
         byte = (x >> (8 * i)) & 0xFF
         substituted = s_box[byte]
-        result |= (substituted << (8 * i))
+        result = (result << 8) | substituted
     return result
 
 def generate_round_keys(key,rounds=10):
@@ -137,7 +139,7 @@ def kuznechik_encrypt(block, round_keys, rounds=10):
     R = block
     for i in range(rounds):
         R ^= round_keys[i]
-        R = substitute_bytes(R, S_BOX, 128)
+        R = substitute_bytes(R,S_BOX, 128)
         R = linear_transform(R, 128)
     return R
 
@@ -145,7 +147,7 @@ def kuznechik_decrypt(block, round_keys, rounds=10):
     L = block
     for i in reversed(range(rounds)):
         L = inv_linear_transform(L, 128)
-        L = substitute_bytes(L, INV_S_BOX, 128)
+        L = substitute_bytes(L, INV_S_BOX,128)
         L ^= round_keys[i]
     return L
 
@@ -217,7 +219,7 @@ if __name__ == "__main__":
                  )  # Пример открытого текста
     # print(f"Изначальный текст: {plaintext}")
     keys = generate_round_keys(key)
-
+    print(keys)
     num_text =173887671632706779947018813715747275054
     enc = kuznechik_encrypt(num_text,keys)
     decr = kuznechik_decrypt(enc,keys)
@@ -226,6 +228,12 @@ if __name__ == "__main__":
     texts = text_to_blocks(plaintext)
     smth = blocks_to_text(texts)
     # print(f"in bytes len:{len(texts)} {texts}")
+
+    for test_byte in range(0x100):
+        substituted = S_BOX[test_byte]
+        restored = INV_S_BOX[substituted]
+        if restored != test_byte:
+            print(f"Test: {hex(test_byte), test_byte} -> {hex(substituted)} -> {hex(restored)} failed")
 
     while True:
         try:
