@@ -1,6 +1,4 @@
-import numpy as np
-
-# Предопределенные константы (S-блоки и матрица L)
+# Предопределенные константы (S-блоки)
 S_BOX = [
     0xFC, 0xEE, 0xDD, 0x11, 0xCF, 0x6E, 0x31, 0x16, 0xFB, 0xC4, 0xFA, 0xDA, 0x23, 0xC5, 0x04, 0x4D,
     0xE9, 0x77, 0xF0, 0xDB, 0x93, 0x2E, 0x99, 0xBA, 0x17, 0x36, 0xF1, 0xBB, 0x14, 0xCD, 0x5F, 0xC1,
@@ -24,20 +22,44 @@ INV_S_BOX = [0] * 256
 for i in range(256):
     INV_S_BOX[S_BOX[i]] = i
 
+# Итерационные константы (8 штук для 10 итерационных ключей)
 C = [
-    0x6EA276726C487AB85D27BD10DD153401,
-    0xDC87ECE4D890F4B3BA4BB920C6918E2,
-    0xB2259A96B4D88E0BE7690430A44F7F03,
-    0x7BCD1B0B73E32BA5B79CB140F2551504,
+    0x6ea276726c487ab85d27bd10dd849401,
+    0xdc87ece4d890f4b3ba4eb92079cbeb02,
+    0xb2259a96b4d88e0be7690430a44f7f03,
+    0x7bcd1b0b73e32ba5b79cb140f2551504,
     0x156f6d791fab511deabb0c502fd18105,
     0xa74af7efab73df160dd208608b9efe06,
     0xc9e8819dc73ba5ae50f5b570561a6a07,
     0xf6593616e6055689adfba18027aa2a08,
+    0x98fb40648a4d2c31f0dc1c90fa2ebe09,
+    0x2adedaf23e95a23a17b518a05e61c10a,
+    0x447cac8052ddd8824a92a5b083e5550b,
+    0x8d942d1d95e67d2c1a6710c0d5ff3f0c,
+    0xe3365b6ff9ae07944740add0087bab0d,
+    0x5113c1f94d76899fa029a9e0ac34d40e,
+    0x3fb1b78b213ef327fd0e14f071b0400f,
+    0x2fb26c2c0f0aacd1993581c34e975410,
+    0x41101a5e6342d669c4123cd39313c011,
+    0xf33580c8d79a5862237b38e3375cbf12,
+    0x9d97f6babbd222da7e5c85f3ead82b13,
+    0x547f77277ce987742ea93083bcc24114,
+    0x3add015510a1fdcc738e8d936146d515,
+    0x88f89bc3a47973c794e789a3c509aa16,
+    0xe65aedb1c831097fc9c034b3188d3e17,
+    0xd9eb5a3ae90ffa5834ce2043693d7e18,
+    0xb7492c48854780e069e99d53b4b9ea19,
+    0x56cb6de319f0eeb8e80996310f6951a,
+    0x6bcec0ac5dd77453d3a72473cd72011b,
+    0xa22641319aecd1fd835291039b686b1c,
+    0xcc843743f6a4ab45de752c1346ecff1d,
+    0x7ea1add5427c254e391c2823e2a3801e,
+    0x1003dba72e345ff6643b95333f27141f,
+    0x5ea7d8581e149b61f16ac1459ceda820
 ]
 
 # степени двойки для поля Галуа
 gf = [1]
-
 for i in range(1,256):
     galua_val = gf[i - 1] << 1
     if galua_val >= 256:
@@ -57,7 +79,6 @@ def join_blocks(L, R, bits=128):
     half = bits // 2
     return (L << half) | R
 
-
 def substitute_bytes(x, s_box=None, size=128):
     """Применяет S-блок к каждому байту 128-битного числа."""
 
@@ -74,9 +95,13 @@ def generate_round_keys(key,rounds=10):
     """Генерирует 10 раундовых ключей из 256-битного ключа."""
     K = [0] * rounds
     K[0], K[1] = key >> 128, key & ((1 << 128) - 1)
-    for i in range(2, rounds):
-        # Реальная генерация ключей с использованием C[i-2], S-блоков и L-функции
-        K[i] = linear_transform(substitute_bytes(K[i-1] ^ C[i-2], S_BOX))
+    for i in range(2, rounds,2):
+        pair_1, pair_2 = K[i-2], K[i-1]
+        for j in range(8):
+            temp_pair = pair_1
+            pair_1 = linear_transform(substitute_bytes(pair_1 ^ C[4*(i-2) + j])) ^ pair_2
+            pair_2 = temp_pair
+        K[i] = pair_1; K[i+1] = pair_2
     return K
 
 
@@ -101,8 +126,7 @@ def gf_div(a,b):
     log_c = (log_a - log_b) % 255
     return gf[log_c]
 
-
-def linear_transform(x,size=128):
+def linear_transform_single(x,size=128):
     """линейное преобразование L(x) для 128-битного блока. Разбивается блок 128 бит на 16 байт,
     и к каждому из них применяется умножение строго определенных констант ГОСТ"""
     x_bytes = [(x >> (8 * i)) & 0xFF for i in range(size//8)]
@@ -117,7 +141,7 @@ def linear_transform(x,size=128):
         result |= x_bytes[i]
     return result
 
-def inv_linear_transform(x,size=128):
+def inv_linear_transform_single(x,size=128):
     """ Обратное линейное преобразование L(x) для 128-битного блока. Разбивается блок 128 бит на 16 байт,
     и к каждому из них применяется умножение строго определенных констант ГОСТ.
     После этого находится сумма в поле с первым байтом(он результат прямого преобразования),
@@ -134,13 +158,33 @@ def inv_linear_transform(x,size=128):
     result |= l
     return result
 
+def linear_transform(x,size=128):
+    """Линейное преобразование. 16 раз единичного линейного преобразования"""
+    x_iter = x
+    for i in range(16):
+        x_iter = linear_transform_single(x_iter,size=size)
+    return x_iter
 
-def kuznechik_encrypt(block, round_keys, rounds=10):
+def inv_linear_transform(x, size=128):
+    """Обратное линейное преобразование. 16 раз единичного преобразования"""
+    x_iter = x
+    for i in range(16):
+        x_iter = inv_linear_transform_single(x_iter, size=size)
+    return x_iter
+
+def kuznechik_encrypt(block, round_keys, rounds=10, mass=None):
+    if mass is None:
+        mass = []
     R = block
     for i in range(rounds):
         R ^= round_keys[i]
+        # print(hex(R))
         R = substitute_bytes(R,S_BOX, 128)
+        # print(hex(R))
         R = linear_transform(R, 128)
+        # print(hex(R))
+        if i == 4:
+            mass.append(R)
     return R
 
 def kuznechik_decrypt(block, round_keys, rounds=10):
@@ -150,6 +194,7 @@ def kuznechik_decrypt(block, round_keys, rounds=10):
         L = substitute_bytes(L, INV_S_BOX,128)
         L ^= round_keys[i]
     return L
+
 
 def text_to_blocks(text: str) -> list[int]:
     """Разбивает текст на блоки по 16 байт (128 бит) и преобразует в числа."""
@@ -176,73 +221,62 @@ def blocks_to_text(blocks: list[int]) -> str:
             break
     return byte_data[:padding_len].decode('utf-8')
 
-def encrypt_text(text: str, key: int) -> list[int]:
-    blocks = text_to_blocks(text)
-    round_keys = generate_round_keys(key,rounds=10)
-    return [kuznechik_encrypt(b, round_keys,rounds=10) for b in blocks]
 
-def decrypt_text(encrypted_blocks: list[int], key: int) -> str:
-    global texts
-    round_keys = generate_round_keys(key,rounds=10)
-    decrypted = [kuznechik_decrypt(b, round_keys,rounds=10) for b in encrypted_blocks]
-    # print(f"we gotta {decrypted}")
-    distin = 0
-    for i in range(len(decrypted)):
-        if decrypted[i] != texts[i]:
-            print(hex(decrypted[i]), end="\t")
-            distin +=1
-    print("\n",distin)
+def encrypt_text(text: str, key: int,rounds=10) -> list[int]:
+    """Шифрует текст (строку) введенным ключом с помощью разбиения на байты в процессе.
+    Результат - список зашфированных чисел"""
+    blocks = text_to_blocks(text)
+    round_keys = generate_round_keys(key,rounds=rounds)
+    return [kuznechik_encrypt(b, round_keys,rounds=rounds) for b in blocks]
+
+def decrypt_text(encrypted_blocks: list[int], key: int,rounds=10) -> str:
+    """Дешифрует текст (набор чисел) с помощью введенного ключа, собирает байты, переводит в
+    строку, понятную человеку"""
+    round_keys = generate_round_keys(key,rounds=rounds)
+    decrypted = [kuznechik_decrypt(b, round_keys,rounds=rounds) for b in encrypted_blocks]
     return blocks_to_text(decrypted)
 
+
+def encrypt_file(filename: str, key: int,rounds=10) -> None:
+    with open (filename,"r",encoding="utf-8") as orig_file:
+        firsttext = orig_file.read()
+
+    encrypted_text = encrypt_text(firsttext,key,rounds=rounds)
+    out_text = ""
+    for block in encrypted_text:
+        out_text+=str(block)
+        out_text+=" "
+
+    out_filename = "GOST_encrypted_"+filename
+    with open(out_filename,"w",encoding="utf-8") as out_file:
+        out_file.write(out_text)
+    return
+
+def decrypt_file(filename: str, key: int,rounds=10)-> None:
+    with open (filename,"r",encoding="utf-8") as orig_file:
+        firsttext = orig_file.read()
+        encrypted = firsttext.split()
+
+    enc_numbers = [int(num) for num in encrypted]
+    out_text = decrypt_text(enc_numbers,key,rounds=rounds)
+
+    out_filename = "GOST_decrypted_"+filename
+    with open(out_filename,"w",encoding="utf-8") as out_file:
+        out_file.write(out_text)
+    return
 
 # Пример использования
 if __name__ == "__main__":
     key = 0x8899AABBCCDDEEFF0011223344556677FEDCBA98765432100123456789ABCDEF  # Пример ключа
     # key = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
     # key = 0x1000
-    plaintext = ("(ドラゴンボール おれはたいよう\n"
-                 "Doragonbooru (Ore wa taiyou)\n"
-"ドラゴンボール (おまえはつき)\n"
-"Doragonbooru (Omae wa tsuki)\n"
-
-"とけあえばきせきのぱわー\n"
-"Tokeaeba kiseki no pawaa\n"
-
-"ドラゴンボール (ゆびをあわせ)\n"
-"Doragonbooru (Yubi wo awase)\n"
-
-"ドラゴンボール (こころかさね)\n"
-"Doragonbooru (Kokoro kasane)\n"
-
-"たたかいのれきしをかえろ...さいきょうのふゆうじょん\n"
-"Tatakai no rekishi wo kaero... Saikyou no fyuujon\n"
-                 )  # Пример открытого текста
-    # print(f"Изначальный текст: {plaintext}")
     keys = generate_round_keys(key)
-    print(keys)
+
+    num = 0x0e93691a0cfc60408b7b68f66b513c13
+    lin_num = linear_transform(num)
+    inv_lin = inv_linear_transform(lin_num)
+
     num_text =173887671632706779947018813715747275054
     enc = kuznechik_encrypt(num_text,keys)
     decr = kuznechik_decrypt(enc,keys)
     print("zaeboka") if decr == num_text else print("biobroli poportil")
-
-    texts = text_to_blocks(plaintext)
-    smth = blocks_to_text(texts)
-    # print(f"in bytes len:{len(texts)} {texts}")
-
-    for test_byte in range(0x100):
-        substituted = S_BOX[test_byte]
-        restored = INV_S_BOX[substituted]
-        if restored != test_byte:
-            print(f"Test: {hex(test_byte), test_byte} -> {hex(substituted)} -> {hex(restored)} failed")
-
-    while True:
-        try:
-            cipher_text = encrypt_text(plaintext,key)
-            # print(cipher_text)
-            decrypted_text = decrypt_text(cipher_text,key)
-            print(f"key {hex(key)} is right")
-            print(decrypted_text)
-            break
-        except:
-            print(f"key {hex(key)} is wrong")
-            key+=1
