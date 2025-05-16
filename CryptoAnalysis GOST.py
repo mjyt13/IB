@@ -1,87 +1,65 @@
 from GOST_R_34_12_2015 import (encrypt_text, decrypt_text,
-                               encrypt_file, decrypt_file,
-                               text_to_blocks,blocks_to_text,
-                               kuznechik_encrypt, kuznechik_decrypt,
-                               generate_round_keys, S_BOX, INV_S_BOX)
+                               kuznechik_encrypt, generate_round_keys)
 import time
+import numpy as np
 from collections import Counter
-songtext = (
-"(ドラゴンボール おれはたいよう\n"
-"Doragonbooru (Ore wa taiyou)\n"
 
-"ドラゴンボール (おまえはつき)\n"
-"Doragonbooru (Omae wa tsuki)\n"
-
-"とけあえばきせきのぱわー\n"
-"Tokeaeba kiseki no pawaa\n"
-
-"ドラゴンボール (ゆびをあわせ)\n"
-"Doragonbooru (Yubi wo awase)\n"
-
-"ドラゴンボール (こころかさね)\n"
-"Doragonbooru (Kokoro kasane)\n"
-
-"たたかいのれきしをかえろ...さいきょうのふゆうじょん\n"
-"Tatakai no rekishi wo kaero... Saikyou no fyuujon\n"
-)  # Пример открытого текста
-
-def sum_bytes(c_bytes: list[int], byte_pos: int, key_guess: int) -> (int, int, dict,int):
-    xor_sum = 0
-    plain_sum = 0
-    found_bytes = []
-    for ct in c_bytes:
-        # Извлекаем нужный байт (после S-боксов, но до L-слоя 4-го раунда)
-        ct_byte = (ct >> (8 * (15 - byte_pos))) & 0xFF
-        xor_sum ^= (ct_byte ^ key_guess)
-        plain_sum ^= ct_byte
-        found_bytes.append(hex(ct_byte))
-    fill = Counter(found_bytes).items()
-    quan = len(fill)
-    return xor_sum, plain_sum, fill, quan
-
-taken_rounds = 10
-# key = 0x2456899AFEDABBA12456899AFEDABBA1B5F3A1077915EFC0B5F3A1077915EFC0
-key = 0x8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef
+taken_rounds = 3
+# key = 0x8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef
+key = 0
 keys = generate_round_keys(key,rounds=taken_rounds)
-filename = "sobache_serdce.txt"
 opened = 0x1122334455667700ffeeddccbbaa9988
 
-# частотные характеристики для блоков - ничего особенного
-"""
-with open(filename,"r",encoding="utf-8") as textfile:
-    text = textfile.read()
-blocks_ = Counter(hex(block) for block in (text_to_blocks(text))).items()
-comparasion = []
-opened = []
-for block in blocks_:
-    opened.append(block)
-enc_blocks = Counter(hex(block) for block in (encrypt_text(text,key,rounds=taken_rounds))).items()
-ciphered = []
-for block in enc_blocks:
-    ciphered.append(block)
-comparasion.append(opened); comparasion.append(ciphered)
-for i in range(len(comparasion[0])):
-    if comparasion[0][i][1] > 4:
-        print(f"{comparasion[0][i][0]} - {comparasion[1][i][0]} : {comparasion[0][i][1]}")
-print()"""
-# попытка в интегральный анализ
-# bytes([i]+[0]*15) ->
-first_bytes = []
-# генерация данных
-plaintexts = [(i << 15*8) for i in range(256)]
-# for p in plaintexts: print(hex(p),end=" ")
-print()
-# print(sum_bytes(plaintexts,0,keys[0]))
-# шифрование
-ciphertexts = [kuznechik_encrypt(block,keys,rounds=taken_rounds,mass=first_bytes) for block in plaintexts]
-cips = []
-for ct in ciphertexts:
-    print(f"{ct:032x}"[:2+taken_rounds+4],end=", ")
-    cips.append(f"{ct:032x}"[2+taken_rounds*2:])
-ciphers=Counter(cips).items()
-print()
-print(ciphers)
+def differential_cryptoanalisys(delta_P):
+    t_start = time.time()
+    # генерация данных
+    delta = delta_P  # Разница
+    signs = 1 << 9
+    print(f"рассматривается разница {hex(delta)}")
+    plaintexts = [i.to_bytes(16, 'big') for i in range(signs)]  # Базовые тексты
+    # пары вида (P, P ⊕ ΔP)
+    print(plaintexts[1<<7])
+    pairs = [(p, bytes([a ^ b for a, b in zip(p, delta.to_bytes(16, 'big'))])) for p in plaintexts]
+    # шифрование блоков
+    ciphertexts = []
+    for p1, p2 in pairs:
+        c1 = kuznechik_encrypt(int.from_bytes(p1, 'big'), keys, rounds=taken_rounds)
+        c2 = kuznechik_encrypt(int.from_bytes(p2, 'big'), keys, rounds=taken_rounds)
+        ciphertexts.append((c1, c2))
+    delta_ciphers = [c1 ^ c2 for c1, c2 in ciphertexts]  # Разности шифротекстов
 
+    byte_positions = range(16)  # Байты 0, 1, 2, 3
+    all_delta_bytes = {pos: [] for pos in byte_positions}
+
+    for pos in byte_positions:
+        all_delta_bytes[pos] = [(dc >> (8 * (15 - pos))) & 0xFF for dc in delta_ciphers]
+
+    # 1. Вывод топ-5 разностей для каждого байта
+    for pos in byte_positions:
+        freq = Counter(all_delta_bytes[pos])
+        top10 = freq.most_common(10)
+        # Расчет среднего числа повторений
+        avg = np.mean(list(freq.values()))
+
+        print(f"Байт {pos}:")
+        print(f"Топ-10 разностей: {top10}")
+        print(f"Среднее число повторений: {avg:.2f}")
+        print(f"Максимальное число повторений: {top10[0][1]}")
+        print(f"Отношение макс/среднее: {top10[0][1] / avg:.2f}x\n")
+
+    t_finish = time.time()
+    print(f"Построено за {t_finish - t_start} секунд ({(t_finish - t_start) / 60} минут)")
+
+    return None
+t_start = time.time()
+d = 0xFF
+i = 0
+while i < 16:
+    differential_cryptoanalisys(d << 4*i)
+    i += 1
+t_finish = time.time()
+print(f"анализ проведен за {t_finish-t_start} секунд ({(t_finish-t_start)/60} минут)")
+"""
 found_key = bytearray(16)
 for byte_pos in range(16):
     print(f"Анализ байта {byte_pos}")
@@ -95,13 +73,4 @@ for byte_pos in range(16):
     else:
         print(f"Не удалось найти ключ для байта {byte_pos}: сумма равна {xor_sum}")
         print(f"Значения байта {byte_pos} ({quan} штук): {found_bytes}")
-print("Найденный ключ:", found_key)
-# шифрование и дешифрование текста из файла
-"""enc_filename = "GOST_encrypted_"+filename
-start = time.time()
-encrypt_file(filename,key,rounds=taken_rounds)
-decrypt_file(enc_filename,key,rounds=taken_rounds)
-finish = time.time()
-print(f"шифрование и дешифрование сработано за {finish-start} секунд")"""
-
-print(hex(kuznechik_encrypt(opened,keys,taken_rounds)))
+print("Найденный ключ:", found_key)"""

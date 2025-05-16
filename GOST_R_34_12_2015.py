@@ -93,9 +93,9 @@ def substitute_bytes(x, s_box=None, size=128):
 
 def generate_round_keys(key,rounds=10):
     """Генерирует 10 раундовых ключей из 256-битного ключа."""
-    K = [0] * rounds
+    K = [0] * 10
     K[0], K[1] = key >> 128, key & ((1 << 128) - 1)
-    for i in range(2, rounds,2):
+    for i in range(2, 10,2):
         pair_1, pair_2 = K[i-2], K[i-1]
         for j in range(8):
             temp_pair = pair_1
@@ -178,11 +178,8 @@ def kuznechik_encrypt(block, round_keys, rounds=10, mass=None):
     R = block
     for i in range(rounds):
         R ^= round_keys[i]
-        # print(hex(R))
-        R = substitute_bytes(R,S_BOX, 128)
-        # print(hex(R))
+        # R = substitute_bytes(R,S_BOX, 128)
         R = linear_transform(R, 128)
-        # print(hex(R))
         if i == 4:
             mass.append(R)
     return R
@@ -191,7 +188,7 @@ def kuznechik_decrypt(block, round_keys, rounds=10):
     L = block
     for i in reversed(range(rounds)):
         L = inv_linear_transform(L, 128)
-        L = substitute_bytes(L, INV_S_BOX,128)
+        # L = substitute_bytes(L, INV_S_BOX,128)
         L ^= round_keys[i]
     return L
 
@@ -264,19 +261,3 @@ def decrypt_file(filename: str, key: int,rounds=10)-> None:
     with open(out_filename,"w",encoding="utf-8") as out_file:
         out_file.write(out_text)
     return
-
-# Пример использования
-if __name__ == "__main__":
-    key = 0x8899AABBCCDDEEFF0011223344556677FEDCBA98765432100123456789ABCDEF  # Пример ключа
-    # key = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-    # key = 0x1000
-    keys = generate_round_keys(key)
-
-    num = 0x0e93691a0cfc60408b7b68f66b513c13
-    lin_num = linear_transform(num)
-    inv_lin = inv_linear_transform(lin_num)
-
-    num_text =173887671632706779947018813715747275054
-    enc = kuznechik_encrypt(num_text,keys)
-    decr = kuznechik_decrypt(enc,keys)
-    print("zaeboka") if decr == num_text else print("biobroli poportil")
